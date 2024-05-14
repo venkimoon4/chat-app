@@ -1,24 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Message from "./Message";
 import SendMessage from "./SendMessage";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db } from "../firebase";
 
 const Chat = () => {
-  const [message, setMessage] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
     const q = query(collection(db, "message"), orderBy("time"));
-    const getDataFromFireStore = onSnapshot(q, (dataFromDB) => {
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const messages = [];
-      dataFromDB.forEach((doc) => {
+      querySnapshot.forEach((doc) => {
         messages.push({ ...doc.data(), id: doc.id });
       });
-      setMessage(messages);
+      setMessages(messages);
+      scrollToBottom();
     });
 
-    return () => getDataFromFireStore();
+    return () => unsubscribe();
   }, []);
+
+  const scrollToBottom = () => {
+    chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <div className="p-3">
@@ -26,9 +32,10 @@ const Chat = () => {
         className="overflow-auto h-[350px] scroll-smooth"
         style={{ scrollbarWidth: "none" }}
       >
-        {message.map((msg) => {
-          return <Message msg={msg} key={msg.id} />;
-        })}
+        {messages.map((msg) => (
+          <Message msg={msg} key={msg.id} />
+        ))}
+        <div ref={chatEndRef} />
       </div>
       <SendMessage />
     </div>
